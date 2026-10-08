@@ -34,8 +34,8 @@ jobs:
           - { target: linux-arm64,   os: ubuntu-22.04, script: build/linux.sh,    arch: arm64 }
           - { target: win-x64,       os: windows-2022, script: build/windows.cmd, arch: x64 }
           - { target: win-arm64,     os: windows-2022, script: build/windows.cmd, arch: arm64 }
-          - { target: mac-x64,       os: macos-14,     script: build/macos.sh,    arch: x64 }
-          - { target: mac-arm64,     os: macos-14,     script: build/macos.sh,    arch: arm64 }
+          - { target: mac-x64,       os: macos-15,     script: build/macos.sh,    arch: x64 }
+          - { target: mac-arm64,     os: macos-15,     script: build/macos.sh,    arch: arm64 }
           - { target: android-arm64, os: ubuntu-22.04, script: build/android.sh,  arch: arm64 }
           # The apps ship for Android on arm64 alone; another ABI is one more
           # line here (android-arm, android-x64 build the same way) and a
@@ -45,6 +45,17 @@ jobs:
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v7
+
+      # The libc++ of the SDK of Xcode 15 cannot compile the protobuf of M150
+      # (a constinit with a heap allocation); the newest Xcode of the image is
+      # taken, as LiveKit does.
+      - name: Newest Xcode
+        if: runner.os == 'macOS'
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo ">> $xcode"
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
 
       # pkg_resources, which a script of the checkout still imports; the
       # python3 of the image is the one gn and gclient run with.

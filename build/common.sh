@@ -100,16 +100,12 @@ EOF
 
 # The hook lastchange.py of the checkout looks for a commit with a Change-Id
 # in the history; a checkout without history (and a commit of webrtc-sdk,
-# which carries none) gives it nothing, and it writes a time of 0. The
-# build takes its link timestamp from that time, and lld on Windows refuses
-# the negative number that comes out. The files are written from the pinned
-# commit instead, which is what they would hold with the history there.
+# which carries none) gives it nothing, and it writes a time of 0. The build
+# takes its link timestamp from that time, and lld on Windows refuses the
+# negative number that comes out. Run again with an empty filter, it takes
+# the pinned commit itself and writes its real time.
 webrtc_lastchange() {
-  local hash time
-  hash=$(git -C src rev-parse HEAD)
-  time=$(git -C src log -1 --format=%ct HEAD)
-  printf 'LASTCHANGE=%s-refs/heads/main@{#0}\n' "$hash" > src/build/util/LASTCHANGE
-  printf '%s\n' "$time" > src/build/util/LASTCHANGE.committime
+  python3 src/build/util/lastchange.py -o src/build/util/LASTCHANGE --filter=
 }
 
 # webrtc_patch <patch> [dir]: applies build/patches/<patch>.patch to the git

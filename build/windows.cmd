@@ -79,11 +79,9 @@ if not exist src (
 )
 rem lastchange.py finds no commit with a Change-Id in a checkout without
 rem history and writes a time of 0; lld then refuses the negative link
-rem timestamp made of it. The files are written from the pinned commit.
-for /f %%h in ('git -C src rev-parse HEAD') do set "wc_hash=%%h"
-for /f %%t in ('git -C src log -1 --format=%%ct HEAD') do set "wc_time=%%t"
-> src\build\util\LASTCHANGE echo LASTCHANGE=!wc_hash!-refs/heads/main@{#0}
-> src\build\util\LASTCHANGE.committime echo !wc_time!
+rem timestamp made of it. Run again with an empty filter, it takes the
+rem pinned commit itself and writes its real time.
+python3 src\build\util\lastchange.py -o src\build\util\LASTCHANGE --filter= || exit /b 1
 
 cd src
 rem A patch already applied is skipped, so the build can be run again on the

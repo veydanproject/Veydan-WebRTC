@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.5 (2026-10-08): LASTCHANGE by the hook itself; macOS on the newest Xcode
+
+- LASTCHANGE is written by lastchange.py with an empty filter (the pinned
+  commit, its real time) on every system: the batch of 1.0.4 lost its
+  format string to cmd and wrote "ECHO is off" into the time.
+- macOS builds on macos-15 with the newest Xcode of the image: the libc++
+  of Xcode 15 refuses the constinit of protobuf in M150.
+
 ## 1.0.4 (2026-10-08): gn starts on Linux, macOS and Android; Windows links
 
 - depot_tools is let update itself on every system: its first run of
