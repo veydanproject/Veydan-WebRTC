@@ -89,12 +89,12 @@ ninja -C "$out" $libcxx_archives
 
 webrtc_no_h264 "$out"
 
-# One static archive of every object (nasm's aside), started from scratch:
-# `ar -rc` only replaces the members it is given. BoringSSL's symbols get a
-# prefix, so that a process which also loads OpenSSL does not mix the two.
+# One static archive of every object (webrtc_pack_objects of common.sh).
+# BoringSSL's symbols get a prefix, so that a process which also loads
+# OpenSSL does not mix the two.
 rm -rf "$artifacts"
 mkdir -p "$artifacts/lib"
-find "$out/obj" -name '*.o' -not -path '*/third_party/nasm/*' -print0 | xargs -0 ar -rc "$artifacts/lib/libwebrtc.a"
+webrtc_pack_objects "$out" "$artifacts/lib/libwebrtc.a"
 llvm=./third_party/llvm-build/Release+Asserts/bin
 "$llvm/llvm-objcopy" --redefine-syms="$WEBRTC_BUILD_DIR/boringssl_prefix_symbols.txt" "$artifacts/lib/libwebrtc.a"
 

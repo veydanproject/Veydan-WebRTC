@@ -76,7 +76,7 @@ webrtc_no_h264 "$out"
 
 rm -rf "$artifacts"
 mkdir -p "$artifacts/lib"
-find "$out/obj" -name '*.o' -not -path '*/third_party/nasm/*' -print0 | xargs -0 ar -rc "$artifacts/lib/libwebrtc.a"
+webrtc_pack_objects "$out" "$artifacts/lib/libwebrtc.a"
 
 webrtc_common_files "$out" "$artifacts"
 webrtc_headers "$artifacts"

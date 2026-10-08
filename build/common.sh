@@ -143,6 +143,35 @@ webrtc_no_h264() {
   fi
 }
 
+# Every object of the GN output (nasm's aside) into one archive, started
+# from scratch. `ar -q` appends and never replaces: the tree holds many
+# objects of one name in different folders (resampler.o, base64.o,
+# entenc.o, bind.o…), and `ar -r`, which replaces a member of the same
+# name, kept only the last of each — 1.0.7 lost about 500 objects that
+# way, and a product linking it missed the symbols of Opus, BoringSSL and
+# abseil. The count of members is checked against the count of objects,
+# and a symbol of each part that went missing then. Run from src/.
+webrtc_pack_objects() {
+  local out="$1" archive="$2" nm n_obj n_mem sym
+  nm=./third_party/llvm-build/Release+Asserts/bin/llvm-nm
+  [ -x "$nm" ] || nm=nm
+  rm -f "$archive"
+  find "$out/obj" -name '*.o' -not -path '*/third_party/nasm/*' -print0 | xargs -0 ar -qc "$archive"
+  ar -s "$archive"
+  n_obj=$(find "$out/obj" -name '*.o' -not -path '*/third_party/nasm/*' | wc -l | tr -d ' ')
+  n_mem=$(ar -t "$archive" | wc -l | tr -d ' ')
+  if [ "$n_mem" != "$n_obj" ]; then
+    echo ">> $archive holds $n_mem members of $n_obj objects: the packing dropped some" >&2
+    exit 1
+  fi
+  for sym in ec_enc_init silk_resampler_init; do
+    if ! "$nm" --defined-only "$archive" 2>/dev/null | grep -qE " T _?$sym\$"; then
+      echo ">> $archive defines no $sym: the objects of Opus are missing" >&2
+      exit 1
+    fi
+  done
+}
+
 # The headers of the tree into <artifacts>/include: every .h and .inc, as
 # webrtc-sys-build expects them, without the sources of FFmpeg and OpenH264,
 # which this build does not use. Run from src/.

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.8 (2026-10-08): the archives hold every object
+
+- The archives of 1.0.7 (and of every release before it) lost about 500
+  objects: `ar -r` replaces a member of the same name, and the tree holds
+  many objects of one name in different folders (resampler.o, base64.o,
+  entenc.o, bind.o…). A product linking them missed the symbols of Opus,
+  BoringSSL and abseil (`undefined symbol: ec_enc_init`). The objects are
+  appended with `ar -q` now; the script counts the members against the
+  objects and looks for the symbols of Opus before it packs the archive.
+  Windows takes the webrtc.lib of GN and was whole.
+
 ## 1.0.7 (2026-10-08): Windows leaves no empty folders of FFmpeg behind
 
 - xcopy excluded the headers of FFmpeg and OpenH264 but made their folders
