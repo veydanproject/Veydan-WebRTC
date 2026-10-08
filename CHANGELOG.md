@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.10 (2026-10-08): the checks of the archive hold on every platform
+
+- On macOS `ar -t` lists `__.SYMDEF` among the members, so the count of
+  1.0.9 was one too many there. On Linux and Android the look-up of the
+  symbols of Opus used `grep -q`, which stops at the first match and, under
+  `pipefail`, leaves nm with SIGPIPE and the pipeline failed — the archive
+  was whole, the check was wrong. The listing is taken whole first.
+
 ## 1.0.9 (2026-10-08): the scripts pass shellcheck again
 
 - The fallback of nm in webrtc_pack_objects is quoted (SC2209); 1.0.8 did

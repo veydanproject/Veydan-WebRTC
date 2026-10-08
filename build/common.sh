@@ -152,23 +152,27 @@ webrtc_no_h264() {
 # abseil. The count of members is checked against the count of objects,
 # and a symbol of each part that went missing then. Run from src/.
 webrtc_pack_objects() {
-  local out="$1" archive="$2" nm n_obj n_mem sym
+  local out="$1" archive="$2" nm n_obj n_mem defined sym
   nm=./third_party/llvm-build/Release+Asserts/bin/llvm-nm
   [ -x "$nm" ] || nm="nm"
   rm -f "$archive"
   find "$out/obj" -name '*.o' -not -path '*/third_party/nasm/*' -print0 | xargs -0 ar -qc "$archive"
   ar -s "$archive"
   n_obj=$(find "$out/obj" -name '*.o' -not -path '*/third_party/nasm/*' | wc -l | tr -d ' ')
-  n_mem=$(ar -t "$archive" | wc -l | tr -d ' ')
+  # BSD ar lists its symbol table (__.SYMDEF) as a member; it is not one.
+  n_mem=$(ar -t "$archive" | grep -vc '^__\.SYMDEF' | tr -d ' ')
   if [ "$n_mem" != "$n_obj" ]; then
     echo ">> $archive holds $n_mem members of $n_obj objects: the packing dropped some" >&2
     exit 1
   fi
+  # The whole listing first, then the look-up: under pipefail a `grep -q`
+  # that stops early leaves nm with SIGPIPE and the pipeline failed.
+  defined=$("$nm" --defined-only "$archive" 2>/dev/null | grep -E ' T _?(ec_enc_init|silk_resampler_init)$' | sed -E 's/.* T _?//' | sort -u | tr '\n' ' ')
   for sym in ec_enc_init silk_resampler_init; do
-    if ! "$nm" --defined-only "$archive" 2>/dev/null | grep -qE " T _?$sym\$"; then
-      echo ">> $archive defines no $sym: the objects of Opus are missing" >&2
-      exit 1
-    fi
+    case " $defined " in
+      *" $sym "*) ;;
+      *) echo ">> $archive defines no $sym: the objects of Opus are missing (nm: $nm; entenc.o members: $(ar -t "$archive" | grep -c '^entenc\.o$'))" >&2; exit 1 ;;
+    esac
   done
 }
 
