@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2 (2026-10-08): the first steps of the Windows and macOS builds
+
+- Windows: depot_tools is let bootstrap its own git and python on the first
+  run of gclient; with DEPOT_TOOLS_UPDATE=0 its git.bat found no git and
+  gclient sync stopped before the checkout.
+- macOS: setuptools is installed with --break-system-packages, as the
+  python of the image is Homebrew's (PEP 668).
+
 ## 1.0.1 (2026-10-08): the check of the workflows reads no URLs
 
 - The CI step that makes sure the workflows name files that exist took the

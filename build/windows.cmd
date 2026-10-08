@@ -51,13 +51,14 @@ echo ^>^> libwebrtc %WEBRTC_COMMIT% for !target! in !work!
 
 rem The checkout: depot_tools, then src at WEBRTC_COMMIT with its
 rem dependencies for Windows, without history. depot_tools must not look
-rem for the toolchain of Google's own builds.
+rem for the toolchain of Google's own builds. On Windows depot_tools brings its
+rem own git and python on the first run of gclient (bootstrap); with
+rem DEPOT_TOOLS_UPDATE=0 that never happens and its git.bat finds nothing.
 cd /d "!work!"
 if not exist depot_tools (
   git clone --depth 1 %DEPOT_TOOLS_REPO% depot_tools || exit /b 1
 )
 set "PATH=!work!\depot_tools;%PATH%"
-set DEPOT_TOOLS_UPDATE=0
 set DEPOT_TOOLS_WIN_TOOLCHAIN=0
 set GYP_MSVS_VERSION=2022
 if not defined vs2022_install set "vs2022_install=C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
