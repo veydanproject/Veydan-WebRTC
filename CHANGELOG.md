@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.6 (2026-10-08): the Windows script goes on past lastchange.py
+
+- python3 of depot_tools is a batch file; run without `call`, it took the
+  rest of the script with it: the build ended after the checkout with a
+  green step and no archive.
+
 ## 1.0.5 (2026-10-08): LASTCHANGE by the hook itself; macOS on the newest Xcode
 
 - LASTCHANGE is written by lastchange.py with an empty filter (the pinned

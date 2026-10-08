@@ -81,7 +81,7 @@ rem lastchange.py finds no commit with a Change-Id in a checkout without
 rem history and writes a time of 0; lld then refuses the negative link
 rem timestamp made of it. Run again with an empty filter, it takes the
 rem pinned commit itself and writes its real time.
-python3 src\build\util\lastchange.py -o src\build\util\LASTCHANGE --filter= || exit /b 1
+call python3 src\build\util\lastchange.py -o src\build\util\LASTCHANGE --filter= || exit /b 1
 
 cd src
 rem A patch already applied is skipped, so the build can be run again on the
