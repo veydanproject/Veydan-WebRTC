@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 (2026-10-08): the check of the workflows reads no URLs
+
+- The CI step that makes sure the workflows name files that exist took the
+  path of the ninja download on GitHub for a file of ours and stopped the
+  first release before a build began. URLs are left out of that check.
+
 ## 1.0.0 (2026-10-08): the first build, without the software H.264
 
 - WebRTC M150: commit `89d790b40447c3c5c54c3edd58aa53d285e35fa7` of

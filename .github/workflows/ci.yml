@@ -32,7 +32,8 @@ jobs:
           set -euo pipefail
           missing=0
           for w in .github/workflows/*.yml; do
-            for f in $(grep -oE '\b(build/[A-Za-z0-9_./-]+|VERSION|CHANGELOG\.md|LICENSE|THIRD-PARTY-LICENSES\.md)\b' "$w" | sort -u); do
+            # URLs are left out: the path of ninja-build/ninja on GitHub is not a file of ours.
+            for f in $(grep -v '://' "$w" | grep -oE '(^|[^A-Za-z0-9_/-])(build/[A-Za-z0-9_./-]+|VERSION|CHANGELOG\.md|LICENSE|THIRD-PARTY-LICENSES\.md)\b' | sed -E 's#^[^A-Za-z0-9_/-]##' | sort -u); do
               [ -e "$f" ] || { echo "::error file=$w::names $f, which does not exist"; missing=1; }
             done
           done
