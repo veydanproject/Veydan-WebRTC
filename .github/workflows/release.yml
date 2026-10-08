@@ -155,7 +155,8 @@ jobs:
           else:
               needed += ["lib/libwebrtc.a", "desktop_capture.ninja"]
           bad = [f"{folder}/{f} is not in the archive" for f in needed if f"{folder}/{f}" not in names]
-          bad += [f"{n}: a header of FFmpeg or OpenH264" for n in sorted(names) if re.search(r"/third_party/(ffmpeg|openh264)/", n)][:5]
+          # Files only: an empty folder left by a copy tool is not a header.
+          bad += [f"{n}: a header of FFmpeg or OpenH264" for n in sorted(names) if not n.endswith("/") and re.search(r"/third_party/(ffmpeg|openh264)/", n)][:5]
           licence = z.read(f"{folder}/LICENSE.md").decode("utf-8", "replace") if f"{folder}/LICENSE.md" in names else ""
           bad += [f"LICENSE.md names {m}" for m in re.findall(r"^# (ffmpeg|openh264)$", licence, re.I | re.M)]
           ninja = z.read(f"{folder}/webrtc.ninja").decode("utf-8", "replace") if f"{folder}/webrtc.ninja" in names else ""

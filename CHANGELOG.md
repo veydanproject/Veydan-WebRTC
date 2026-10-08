@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.7 (2026-10-08): Windows leaves no empty folders of FFmpeg behind
+
+- xcopy excluded the headers of FFmpeg and OpenH264 but made their folders
+  all the same; the script removes them, and the check of the archive reads
+  files only. The Windows build of 1.0.6 was otherwise complete, with no
+  FFmpeg or OpenH264 among its licences.
+
 ## 1.0.6 (2026-10-08): the Windows script goes on past lastchange.py
 
 - python3 of depot_tools is a batch file; run without `call`, it took the

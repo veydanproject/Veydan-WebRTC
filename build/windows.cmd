@@ -130,6 +130,8 @@ rem The headers: every .h and .inc of the tree, without the sources of
 rem FFmpeg and OpenH264, which this build does not use, and the build output.
 xcopy *.h "!artifacts!\include" /C /S /I /Q /H /EXCLUDE:%BUILD_DIR%\windows-headers-exclude.txt >nul || exit /b 1
 xcopy *.inc "!artifacts!\include" /C /S /I /Q /H /EXCLUDE:%BUILD_DIR%\windows-headers-exclude.txt >nul || exit /b 1
+rem xcopy makes the folders of the excluded files all the same, empty.
+for %%d in (ffmpeg openh264) do if exist "!artifacts!\include\third_party\%%d" rmdir /s /q "!artifacts!\include\third_party\%%d"
 
 rem The archive: 7-Zip writes the paths with forward slashes, which every
 rem unzip reads; Compress-Archive of PowerShell 5 did not.
