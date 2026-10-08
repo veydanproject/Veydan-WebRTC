@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.4 (2026-10-08): gn starts on Linux, macOS and Android; Windows links
+
+- depot_tools is let update itself on every system: its first run of
+  gclient bootstraps the python gn runs with; with DEPOT_TOOLS_UPDATE=0 gn
+  stopped with "python3_bin_reldir.txt not found".
+- LASTCHANGE and LASTCHANGE.committime are written from the pinned commit:
+  the hook finds no Change-Id in a checkout without history, writes a time
+  of 0, and lld-link refuses the negative timestamp made of it.
+
 ## 1.0.3 (2026-10-08): setuptools on every image
 
 - The pip of Ubuntu 22.04 knows no --break-system-packages; the setting goes
