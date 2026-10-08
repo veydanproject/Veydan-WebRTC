@@ -1,0 +1,61 @@
+name: CI
+
+# The build scripts, without building: they parse, shellcheck has nothing to
+# say, the release workflow names only files that exist, the patches the
+# scripts apply exist and no patch lies unused. The build itself runs by a
+# tag (release.yml). Also the gate of the release workflow.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  scripts:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: The scripts parse
+        run: |
+          set -euo pipefail
+          for f in build/*.sh; do bash -n "$f"; done
+          python3 -m py_compile build/*.py
+          shellcheck -x -P SCRIPTDIR -s bash build/*.sh
+
+      - name: The workflows name files that exist
+        run: |
+          set -euo pipefail
+          missing=0
+          for w in .github/workflows/*.yml; do
+            for f in $(grep -oE '\b(build/[A-Za-z0-9_./-]+|VERSION|CHANGELOG\.md|LICENSE|THIRD-PARTY-LICENSES\.md)\b' "$w" | sort -u); do
+              [ -e "$f" ] || { echo "::error file=$w::names $f, which does not exist"; missing=1; }
+            done
+          done
+          exit $missing
+
+      - name: Every patch is applied by a script, and every applied patch exists
+        run: |
+          set -euo pipefail
+          status=0
+          for p in build/patches/*.patch; do
+            name="$(basename "$p" .patch)"
+            grep -qE "webrtc_patch $name\b|\b$name\b" build/linux.sh build/android.sh build/macos.sh build/windows.cmd \
+              || { echo "::error file=$p::no script applies it"; status=1; }
+          done
+          for name in $(grep -ohE 'webrtc_patch [a-z0-9_]+' build/*.sh | awk '{ print $2 }' | sort -u) \
+                      $(grep -oE 'for %%p in \([a-z0-9_ ]+\)' build/windows.cmd | sed 's/.*(\(.*\))/\1/'); do
+            [ -f "build/patches/$name.patch" ] || { echo "::error::build/patches/$name.patch is applied and does not exist"; status=1; }
+          done
+          exit $status
+
+      - name: The version is X.Y.Z and the changelog names it
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          echo "$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::VERSION is '$version', not X.Y.Z"; exit 1; }
+          grep -q "^## $version " CHANGELOG.md || { echo "::error::CHANGELOG.md has no entry '## $version'"; exit 1; }

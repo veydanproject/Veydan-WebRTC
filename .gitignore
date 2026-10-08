@@ -1,0 +1,4 @@
+# The checkout, the build and the archives of build/*.sh (tens of gigabytes).
+/work/
+*.zip
+*.zip.sha256

@@ -1,0 +1,28 @@
+// SPDX-FileCopyrightText: 2026 Veydan Project
+// SPDX-License-Identifier: LicenseRef-PolyForm-Perimeter-1.0.1
+//
+// libwebrtc.jar of the Android archive: the classes the tree built
+// (libs/classes.jar, put there by build/android.sh), every package moved
+// under "livekit" — org.webrtc becomes livekit.org.webrtc, which is what the
+// JNI symbols of libwebrtc.a (android_package_prefix) and the application
+// expect. Run as `gradle shadowJar`; the result is build/libs/prefixed-jni-all.jar.
+plugins {
+    id 'java-library'
+    // The shadow plugin of GradleUp: its ASM reads the Java 21 class files
+    // of the tree, which the older plugin of johnrengelman could not.
+    id 'com.gradleup.shadow' version '9.6.1'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+dependencies {
+    api files("libs/classes.jar")
+}
+
+shadowJar {
+    enableAutoRelocation = true
+    relocationPrefix = "livekit"
+}

@@ -1,0 +1,195 @@
+name: Release
+
+# A tag vX.Y.Z builds libwebrtc for every system the Veydan apps run on and
+# publishes the archives, webrtc-<target>-release.zip, with their SHA256SUMS
+# in the release of the tag. scripts/webrtc-toolchain.sh of the apps fetches
+# them from there by tag and checks the hashes it pins. A run by hand
+# (workflow_dispatch) builds and keeps the archives as artifacts of the run,
+# and publishes nothing.
+#
+# Each job is a checkout of WebRTC (about 15 GB) and a build of an hour or
+# more on a hosted runner; the Ubuntu runners first make room. A build that
+# fails stops the release: an archive missing for one system would leave an
+# app without its engine of calls. The tools come with the images (python3,
+# git, 7-Zip, gradle) or by apt, brew and a pinned download (ninja).
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    needs: checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: linux-x64,     os: ubuntu-22.04, script: build/linux.sh,    arch: x64 }
+          - { target: linux-arm64,   os: ubuntu-22.04, script: build/linux.sh,    arch: arm64 }
+          - { target: win-x64,       os: windows-2022, script: build/windows.cmd, arch: x64 }
+          - { target: win-arm64,     os: windows-2022, script: build/windows.cmd, arch: arm64 }
+          - { target: mac-x64,       os: macos-14,     script: build/macos.sh,    arch: x64 }
+          - { target: mac-arm64,     os: macos-14,     script: build/macos.sh,    arch: arm64 }
+          - { target: android-arm64, os: ubuntu-22.04, script: build/android.sh,  arch: arm64 }
+          # The apps ship for Android on arm64 alone; another ABI is one more
+          # line here (android-arm, android-x64 build the same way) and a
+          # hash in scripts/webrtc-toolchain.sh of the apps.
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v7
+
+      # pkg_resources, which a script of the checkout still imports; the
+      # python3 of the image is the one gn and gclient run with.
+      - name: setuptools
+        shell: bash
+        run: pip3 install setuptools
+
+      # The checkout does not fit beside what the image carries: about
+      # 14 GB are free, the checkout needs 15 and the build more. The
+      # Android SDK of the image goes too (the tree brings its own NDK and
+      # SDK), with .NET, Haskell, CodeQL, Swift and the docker images; the
+      # swap file gives a few more.
+      - name: Make room on the disk
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          df -h /
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL /usr/share/swift /usr/local/share/powershell /usr/lib/jvm/temurin-8-jdk-amd64 || true
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          sudo swapoff -a || true
+          sudo rm -f /mnt/swapfile || true
+          df -h /
+
+      - name: Linux dependencies
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ninja-build pkg-config cpio zip
+
+      # The Java side of the Android archive: a JDK for gradle, which only
+      # moves the packages under "livekit" (the tree compiles its Java with
+      # the JDK of its own checkout). gradle is the one of the image; GRADLE
+      # names another to build/android.sh.
+      - name: JDK 17 (Android)
+        if: startsWith(matrix.target, 'android')
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: gradle (Android)
+        if: startsWith(matrix.target, 'android')
+        run: gradle --version
+
+      - name: macOS dependencies
+        if: startsWith(matrix.os, 'macos')
+        run: brew install ninja
+
+      - name: Windows dependencies (ninja)
+        if: startsWith(matrix.os, 'windows')
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip" -OutFile ninja.zip
+          Expand-Archive -Path ninja.zip -DestinationPath "${{ github.workspace }}\ninja"
+          "${{ github.workspace }}\ninja" | Out-File -Append -Encoding utf8 -FilePath $Env:GITHUB_PATH
+
+      - name: Tools
+        shell: bash
+        run: |
+          ninja --version
+          python3 --version
+          git --version
+
+      - name: Build (Unix)
+        if: ${{ !startsWith(matrix.os, 'windows') }}
+        shell: bash
+        run: bash "${{ matrix.script }}" --arch "${{ matrix.arch }}" --work "${{ github.workspace }}/work"
+
+      - name: Build (Windows)
+        if: startsWith(matrix.os, 'windows')
+        shell: cmd
+        run: call build\windows.cmd --arch ${{ matrix.arch }} --work ${{ github.workspace }}\work
+
+      # What the bridge reads is in the archive, and nothing of the software
+      # H.264 is: no notice of FFmpeg or OpenH264 in its LICENSE.md, no
+      # header of theirs. Python, since the images differ in unzip.
+      - name: The archive is complete
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          py="$(command -v python3 || command -v python)"
+          "$py" - "work/webrtc-$TARGET-release.zip" "$TARGET-release" <<'EOF'
+          import re, sys, zipfile
+          archive, folder = sys.argv[1], sys.argv[2]
+          z = zipfile.ZipFile(archive)
+          names = set(z.namelist())
+          needed = ["webrtc.ninja", "args.gn", "LICENSE.md", "include/api/peer_connection_interface.h"]
+          if folder.startswith("win-"):
+              needed += ["lib/webrtc.lib", "desktop_capture.ninja"]
+          elif folder.startswith("android-"):
+              needed += ["lib/libwebrtc.a", "lib/libjingle_peerconnection_so.so", "libwebrtc.jar", "AndroidManifest.xml"]
+          else:
+              needed += ["lib/libwebrtc.a", "desktop_capture.ninja"]
+          bad = [f"{folder}/{f} is not in the archive" for f in needed if f"{folder}/{f}" not in names]
+          bad += [f"{n}: a header of FFmpeg or OpenH264" for n in sorted(names) if re.search(r"/third_party/(ffmpeg|openh264)/", n)][:5]
+          licence = z.read(f"{folder}/LICENSE.md").decode("utf-8", "replace") if f"{folder}/LICENSE.md" in names else ""
+          bad += [f"LICENSE.md names {m}" for m in re.findall(r"^# (ffmpeg|openh264)$", licence, re.I | re.M)]
+          ninja = z.read(f"{folder}/webrtc.ninja").decode("utf-8", "replace") if f"{folder}/webrtc.ninja" in names else ""
+          if "-DWEBRTC_USE_H264" in ninja.split("\n", 1)[0]:
+              bad.append("webrtc.ninja defines WEBRTC_USE_H264")
+          for b in bad:
+              print(f"::error::{archive}: {b}")
+          print(f"{archive}: {len(names)} entries, {'ok' if not bad else 'REFUSED'}")
+          sys.exit(1 if bad else 0)
+          EOF
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: webrtc-${{ matrix.target }}-release
+          path: work/webrtc-${{ matrix.target }}-release.zip
+          if-no-files-found: error
+          compression-level: 0
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+
+      # The tag names the version VERSION carries.
+      - name: The tag is the version
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::the tag is $GITHUB_REF_NAME, VERSION says $version"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: webrtc-*-release
+          merge-multiple: true
+          path: dist
+
+      - name: SHA256SUMS
+        run: |
+          cd dist
+          sha256sum webrtc-*-release.zip | tee SHA256SUMS
+
+      - name: Publish the archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/webrtc-*-release.zip dist/SHA256SUMS LICENSE THIRD-PARTY-LICENSES.md \
+            --title "Veydan WebRTC $VERSION" --notes-file CHANGELOG.md --verify-tag
