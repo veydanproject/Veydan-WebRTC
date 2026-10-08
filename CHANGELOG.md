@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.9 (2026-10-08): the scripts pass shellcheck again
+
+- The fallback of nm in webrtc_pack_objects is quoted (SC2209); 1.0.8 did
+  not get past the checks, so its archives were never built.
+
 ## 1.0.8 (2026-10-08): the archives hold every object
 
 - The archives of 1.0.7 (and of every release before it) lost about 500

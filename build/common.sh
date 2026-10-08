@@ -154,7 +154,7 @@ webrtc_no_h264() {
 webrtc_pack_objects() {
   local out="$1" archive="$2" nm n_obj n_mem sym
   nm=./third_party/llvm-build/Release+Asserts/bin/llvm-nm
-  [ -x "$nm" ] || nm=nm
+  [ -x "$nm" ] || nm="nm"
   rm -f "$archive"
   find "$out/obj" -name '*.o' -not -path '*/third_party/nasm/*' -print0 | xargs -0 ar -qc "$archive"
   ar -s "$archive"
