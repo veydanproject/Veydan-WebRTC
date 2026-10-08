@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3 (2026-10-08): setuptools on every image
+
+- The pip of Ubuntu 22.04 knows no --break-system-packages; the setting goes
+  through PIP_BREAK_SYSTEM_PACKAGES, which an old pip ignores and the
+  Homebrew one on macOS reads.
+
 ## 1.0.2 (2026-10-08): the first steps of the Windows and macOS builds
 
 - Windows: depot_tools is let bootstrap its own git and python on the first

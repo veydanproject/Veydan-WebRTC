@@ -49,10 +49,12 @@ jobs:
       # pkg_resources, which a script of the checkout still imports; the
       # python3 of the image is the one gn and gclient run with.
       # The python of the macOS image is Homebrew's and refuses to install
-      # into itself (PEP 668) without being told that we mean it.
+      # into itself (PEP 668) unless told so; the pip of Ubuntu 22.04 is older
+      # and knows no such flag. The environment variable serves both: the old
+      # pip ignores it, the new one reads it.
       - name: setuptools
         shell: bash
-        run: python3 -m pip install --break-system-packages setuptools
+        run: PIP_BREAK_SYSTEM_PACKAGES=1 python3 -m pip install setuptools
 
       # The checkout does not fit beside what the image carries: about
       # 14 GB are free, the checkout needs 15 and the build more. The
